@@ -1,0 +1,106 @@
+__id__ = "code_highlight"
+__name__ = "Code Highlight"
+__description__ = "Inline code in messages (card numbers, commands, codes) gets a soft highlight behind it, like desktop. One tap still copies it. Made by [firestarter1996](https://github.com/firestarter1996)."
+__author__ = "firestarter1996"
+__version__ = "1.0.0"
+__min_version__ = "12.5.1"
+
+# Performance: the inline code spans are swapped once, when a message's text is built
+# (MessageObject.addEntitiesToText); nothing runs in Python while drawing or scrolling.
+# Stock tap to copy is kept: the new span is still a URLSpanMono. Logcat tag: CodeHighlight.
+
+import base64
+import zlib
+
+from java import jclass
+from base_plugin import BasePlugin, MethodHook
+from hook_utils import find_class
+from ui.settings import Header, Selector, Divider
+
+ENTRY = "com.firestarter.codehighlight.CodeCore"
+LEVELS = (0x20, 0x30, 0x48)
+
+
+def _log(msg):
+    try:
+        jclass("android.util.Log").d("CodeHighlight", str(msg))
+    except Exception:
+        pass
+
+
+class CodeHighlightPlugin(BasePlugin):
+
+    def on_plugin_load(self):
+        try:
+            ctx = jclass("org.telegram.messenger.ApplicationLoader").applicationContext
+            with open(__file__, "r", encoding="utf-8") as fh:
+                text = fh.read()
+            block = text.rsplit("# __DEX_BEGIN__", 1)[1].split("# __DEX_END__", 1)[0]
+            payload = "".join(l.strip()[1:].strip() for l in block.splitlines() if l.strip().startswith("#"))
+            data = zlib.decompress(base64.b64decode(payload))
+            loader = jclass("dalvik.system.InMemoryDexClassLoader")(jclass("java.nio.ByteBuffer").wrap(data), ctx.getClassLoader())
+            core = loader.loadClass(ENTRY)
+            self.m = {str(m.getName()): m for m in core.getDeclaredMethods()}
+            self._sync()
+        except Exception as e:
+            _log("load: %s" % e)
+            return
+        wrap = self.m["wrap"]
+        mo = find_class("org.telegram.messenger.MessageObject")
+        b = jclass("java.lang.Boolean").TYPE
+        i = jclass("java.lang.Integer").TYPE
+
+        class EntitiesHook(MethodHook):
+            def after_hooked_method(self, param):
+                try:
+                    wrap.invoke(None, param.args[0])
+                except Exception as e:
+                    _log("wrap: %s" % e)
+
+        self.hook_method(mo.getDeclaredMethod("addEntitiesToText", find_class("java.lang.CharSequence"),
+                                              find_class("java.util.ArrayList"), b, b, b, b, i), EntitiesHook())
+        _log("loaded " + __version__)
+
+    def _sync(self, *_):
+        try:
+            lvl = LEVELS[int(self.get_setting("strength", 1) or 0) % 3]
+            self.m["setAlpha"].invoke(None, jclass("java.lang.Integer")(lvl))
+        except Exception as e:
+            _log("sync: %s" % e)
+
+    def create_settings(self):
+        return [
+            Header(text="Code Highlight"),
+            Selector(key="strength", text="Highlight", default=1, items=["Soft", "Medium", "Strong"], on_change=self._sync),
+            Divider(text="Tap inline code to copy it. New messages and reopened chats pick up a change."),
+        ]
+
+
+# Compiled CodeCore (java/ in the repo), zlib + base64
+# __DEX_BEGIN__
+# eNqNl1tsHFcZx78zMzs73l3vru1cnDSJ10sKTrCzsWs7dtZNUl+SGK0VqIPp5YUzu2d3p1nPbmbGjgM0KgiFVi3QhyrwUKmIIiEh
+# eEC98EAlHsoDEiAuT1VVpErwUFBQK7UPgCKF/zlzFi8oQvX6t//v3M/5vnNmz9TETurkA3MUzq/OPXLzG5fmk2e+9mBj/0u//Um6
+# 8IfFo5PvZYg6RLSzMT1I+u8o8j5Dcf5+8F1GlId+BE1CXzWIDkJvQ/FPb5iwHaI70Ldtor+A2+B98CEw0CgDcmAPGAb3gVFwPzgL
+# HgXPgdfB2+Bf4DD6nAfroA6eBN8GL4OfgT+CdB/RDJgDC+AcuAgugXWwAa6AW+Bl8CPwCvgF+B34E/gb+Dv4EPwTsBRRH8iDveAI
+# GANTYBlUwCOgDiJwA9wEz4LnwS3wffBT8HPwS/Br8A74M/hrKvYbXENwNfWDLMhR7OcBIIMxBPaAvWCfjsUwOECx/+8Dh8Bh8AkZ
+# N3A/MHUcv2LHYzCdTmr768h0tP1cjy3rY/mU1vXTel4yP63n9oIdjzek6xzR9ovIH9H2D2AXtP3jnnzZz6i234Bd1PavYKf0On9v
+# y/kzGoOdgH5KaZ5OaC1pPal1UusUSZ9aNK/1tNay0hwtKGX0oNIMPaS0n5YpHm8WamGVTGmKzqt+HbVGqUxpkiaU9tGSUpMuKj8l
+# 6ZSKo0FntJ5VvovbZVFzRvnPpge0H6eVWjSnNEuLKubx+IN6fKtnL5BO30EgfqgDlNDl2Z7yDDbUa7rcVh+cCzsu27aHVW0L85P7
+# b8WO/d8uHID//HwS60nRHnb37l16Lf9FxuhdxoZfzz96Mh4jj9nZaFlBu+8hXfjAoEE2j1Y5NpIzKMhb8HSKDhmDFJwzaaSQQez3
+# YY3P0qgxb1h0jG6inWuYNG8cp4Pgaj4j42F4yDtofLonbSF9rCdtID3ek7aRXulJJzAGG5oZ/Rydt4j5+SGsM5M4ZA/SlDBp7GxQ
+# MOgSpRIBtibUDgpMarKYtch1TPILexDNjJN8ZgSH33Us5OxDTirlOkbXTruODXuvtDOuk9ht9c2R/gFKvrdtO4h6UEig7+ALNr0v
+# 3jJN9hZjbOyV/hybHDPHTOhQzswxeXYn4NMK9IKKyotMPmzlPpXx8fS5O4Qd4Bdy8H+GDeb9wn6UD7Ddc+3b8V4YwqloIDerzjNT
+# 5YGOfSc/qGLf7XvbjmM6RHfpamEAfafYIKy8shpM9jKWUN1n6ThSCx9gZ1DWm3hzZ4SN57xbb7LjuYUF40vjS54RHpYTyuJcZTHj
+# LPaD7JzpvWn0zCelnzU5rV1MvZ9Tut6A3s9Z3ZLpZ6Gp+0qTs1Bteb4XnSF7IVa2SMZihfqX2jWx1A7EiSf4NidHJtc73Ce2Subq
+# 6ioZqxViFbIqqzCMSoWGK9yvBW2vVorETlSSlX3utkT5f0su4+uz3POjMk1Wqu3NUt0LRBjxIBJBqYpxml6j2QJRqTuJo93hyzT2
+# MZuUqVip8da2d6WEibQjHnltv7TiV1vt0PMbSy0ehmU6co86q74vAl0+eo/yNbHp6goCVQ7eo8rlZtC+FsqVS++VWtxvlJaaPFgX
+# V7eEX8XkBnpL4rH29mSt7FRFR3ZVpnxP9hqPmmUa7Mm55D4hqtF/561HAVZYpgM9eYGot1CxdN4TrVqZTlXaQQPhaIlGwDdLWx78
+# ttlp+8KPQhWg9eh6S3n86H9SD28p9/+fhp9/uCKbrLX9dpnYBhkb2CcbFbI3sEuwqRJSZdZjxB6jocfvsY5jj3/sAdK8WhVheL7F
+# GyEleKvT5JR0G0vtVjugVHUrCNBmxa9RVttrqM0bgjI6vS43EKV16vL1jiBWJ6su21j1tbBBdj2uIxUeoERd1TIbIqIkvhavR4Ic
+# GCqEsaWGz8NaFtUWD0RNuZxs5Kz6EaWgcg1ykIy24yV0U/GQjk6FZLeE34iaZG7yHXx5Plk+3xSUCsRmezs+lf2hiB5S7vBw5MiR
+# ydghYdwNJUK1gtxWp8YjsRzwaxgHs09s89aWIOtawDt4dN64sTz35aLLq1eEXyueLtbETnG8iCPX8Vpqb09s4oCpAnergaImDyeq
+# TVG9Em5thsXTdd4KxXgRs5zgHa94emp2vBg2+cQkmnCXc3d6dt6dEW5tulabct35SZefFLXZ+vTM1KlTdc7FdJWj120RhBgMjeZO
+# zJ6YmqiJ7eKTZNjswnDCSBqftA6c258w+tiFQ2w4YzhK8aRjzPnqU9adZB97AT8xuPpcZE73k3r6KeudNEP5P9LMeTXN+p7PsL7f
+# OPrZ+jR+JL6Vjp+j39H6EvTd7kVO/32k093fDXn3vJ2O7yO9+VK793+j5x3ApN33AIt23wUStPs+YNPuOwErxHXke4GpbXkXYfn4
+# d0DeB41CPJZ8b7AKcb9yPfICKfuRdx0zH48t12Pr/Dv6Qsr0+8q/Adh5PIY=
+# __DEX_END__

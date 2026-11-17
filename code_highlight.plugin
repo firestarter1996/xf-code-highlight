@@ -1,13 +1,14 @@
 __id__ = "code_highlight"
 __name__ = "Code Highlight"
-__description__ = "Inline code in messages (card numbers, commands, codes) gets a soft highlight behind it, like desktop. One tap still copies it. Made by [firestarter1996](https://github.com/firestarter1996)."
+__description__ = "Inline code in messages (card numbers, commands, codes) is drawn in your theme link color and underlined, with a soft highlight behind it, so you can see it copies. One tap still copies it. Made by [firestarter1996](https://github.com/firestarter1996)."
 __author__ = "firestarter1996"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __min_version__ = "12.5.1"
 
 # Performance: the inline code spans are swapped once, when a message's text is built
 # (MessageObject.addEntitiesToText); nothing runs in Python while drawing or scrolling.
-# Stock tap to copy is kept: the new span is still a URLSpanMono. Logcat tag: CodeHighlight.
+# Stock tap to copy is kept: the new span is still a URLSpanMono. Drawing reads the theme link color
+# (incoming or outgoing) in Java and sets the underline; a failure keeps the stock look. Logcat tag: CodeHighlight.
 
 import base64
 import zlib
@@ -59,7 +60,10 @@ class CodeHighlightPlugin(BasePlugin):
 
         self.hook_method(mo.getDeclaredMethod("addEntitiesToText", find_class("java.lang.CharSequence"),
                                               find_class("java.util.ArrayList"), b, b, b, b, i), EntitiesHook())
-        _log("loaded " + __version__)
+        try:
+            _log("loaded %s %s" % (__version__, self.m["probe"].invoke(None)))
+        except Exception as e:
+            _log("loaded %s probe: %s" % (__version__, e))
 
     def _sync(self, *_):
         try:
@@ -75,32 +79,36 @@ class CodeHighlightPlugin(BasePlugin):
             Divider(text="Tap inline code to copy it. New messages and reopened chats pick up a change."),
         ]
 
-
-# Compiled CodeCore (java/ in the repo), zlib + base64
 # __DEX_BEGIN__
-# eNqNl1tsHFcZx78zMzs73l3vru1cnDSJ10sKTrCzsWs7dtZNUl+SGK0VqIPp5YUzu2d3p1nPbmbGjgM0KgiFVi3QhyrwUKmIIiEh
-# eEC98EAlHsoDEiAuT1VVpErwUFBQK7UPgCKF/zlzFi8oQvX6t//v3M/5vnNmz9TETurkA3MUzq/OPXLzG5fmk2e+9mBj/0u//Um6
-# 8IfFo5PvZYg6RLSzMT1I+u8o8j5Dcf5+8F1GlId+BE1CXzWIDkJvQ/FPb5iwHaI70Ldtor+A2+B98CEw0CgDcmAPGAb3gVFwPzgL
-# HgXPgdfB2+Bf4DD6nAfroA6eBN8GL4OfgT+CdB/RDJgDC+AcuAgugXWwAa6AW+Bl8CPwCvgF+B34E/gb+Dv4EPwTsBRRH8iDveAI
-# GANTYBlUwCOgDiJwA9wEz4LnwS3wffBT8HPwS/Br8A74M/hrKvYbXENwNfWDLMhR7OcBIIMxBPaAvWCfjsUwOECx/+8Dh8Bh8AkZ
-# N3A/MHUcv2LHYzCdTmr768h0tP1cjy3rY/mU1vXTel4yP63n9oIdjzek6xzR9ovIH9H2D2AXtP3jnnzZz6i234Bd1PavYKf0On9v
-# y/kzGoOdgH5KaZ5OaC1pPal1UusUSZ9aNK/1tNay0hwtKGX0oNIMPaS0n5YpHm8WamGVTGmKzqt+HbVGqUxpkiaU9tGSUpMuKj8l
-# 6ZSKo0FntJ5VvovbZVFzRvnPpge0H6eVWjSnNEuLKubx+IN6fKtnL5BO30EgfqgDlNDl2Z7yDDbUa7rcVh+cCzsu27aHVW0L85P7
-# b8WO/d8uHID//HwS60nRHnb37l16Lf9FxuhdxoZfzz96Mh4jj9nZaFlBu+8hXfjAoEE2j1Y5NpIzKMhb8HSKDhmDFJwzaaSQQez3
-# YY3P0qgxb1h0jG6inWuYNG8cp4Pgaj4j42F4yDtofLonbSF9rCdtID3ek7aRXulJJzAGG5oZ/Rydt4j5+SGsM5M4ZA/SlDBp7GxQ
-# MOgSpRIBtibUDgpMarKYtch1TPILexDNjJN8ZgSH33Us5OxDTirlOkbXTruODXuvtDOuk9ht9c2R/gFKvrdtO4h6UEig7+ALNr0v
-# 3jJN9hZjbOyV/hybHDPHTOhQzswxeXYn4NMK9IKKyotMPmzlPpXx8fS5O4Qd4Bdy8H+GDeb9wn6UD7Ddc+3b8V4YwqloIDerzjNT
-# 5YGOfSc/qGLf7XvbjmM6RHfpamEAfafYIKy8shpM9jKWUN1n6ThSCx9gZ1DWm3hzZ4SN57xbb7LjuYUF40vjS54RHpYTyuJcZTHj
-# LPaD7JzpvWn0zCelnzU5rV1MvZ9Tut6A3s9Z3ZLpZ6Gp+0qTs1Bteb4XnSF7IVa2SMZihfqX2jWx1A7EiSf4NidHJtc73Ce2Subq
-# 6ioZqxViFbIqqzCMSoWGK9yvBW2vVorETlSSlX3utkT5f0su4+uz3POjMk1Wqu3NUt0LRBjxIBJBqYpxml6j2QJRqTuJo93hyzT2
-# MZuUqVip8da2d6WEibQjHnltv7TiV1vt0PMbSy0ehmU6co86q74vAl0+eo/yNbHp6goCVQ7eo8rlZtC+FsqVS++VWtxvlJaaPFgX
-# V7eEX8XkBnpL4rH29mSt7FRFR3ZVpnxP9hqPmmUa7Mm55D4hqtF/561HAVZYpgM9eYGot1CxdN4TrVqZTlXaQQPhaIlGwDdLWx78
-# ttlp+8KPQhWg9eh6S3n86H9SD28p9/+fhp9/uCKbrLX9dpnYBhkb2CcbFbI3sEuwqRJSZdZjxB6jocfvsY5jj3/sAdK8WhVheL7F
-# GyEleKvT5JR0G0vtVjugVHUrCNBmxa9RVttrqM0bgjI6vS43EKV16vL1jiBWJ6su21j1tbBBdj2uIxUeoERd1TIbIqIkvhavR4Ic
-# GCqEsaWGz8NaFtUWD0RNuZxs5Kz6EaWgcg1ykIy24yV0U/GQjk6FZLeE34iaZG7yHXx5Plk+3xSUCsRmezs+lf2hiB5S7vBw5MiR
-# ydghYdwNJUK1gtxWp8YjsRzwaxgHs09s89aWIOtawDt4dN64sTz35aLLq1eEXyueLtbETnG8iCPX8Vpqb09s4oCpAnergaImDyeq
-# TVG9Em5thsXTdd4KxXgRs5zgHa94emp2vBg2+cQkmnCXc3d6dt6dEW5tulabct35SZefFLXZ+vTM1KlTdc7FdJWj120RhBgMjeZO
-# zJ6YmqiJ7eKTZNjswnDCSBqftA6c258w+tiFQ2w4YzhK8aRjzPnqU9adZB97AT8xuPpcZE73k3r6KeudNEP5P9LMeTXN+p7PsL7f
-# OPrZ+jR+JL6Vjp+j39H6EvTd7kVO/32k093fDXn3vJ2O7yO9+VK793+j5x3ApN33AIt23wUStPs+YNPuOwErxHXke4GpbXkXYfn4
-# d0DeB41CPJZ8b7AKcb9yPfICKfuRdx0zH48t12Pr/Dv6Qsr0+8q/Adh5PIY=
+# eNqNl1tsHFcZx78zO3vxeL07vsWXuPFkG6jT2tl14sSXTdLETlIvXZMQJ26TUJrZ3eP1xuuZzczYcdRShVJBBVEFFUQCCqHiojzk
+# pYhCX4ryAC8gcXkABRBSESggJCQE6kOlSOF/zhzXGxqh7uo333fu53zfd87MqfB1I7dngl59u6Pyt+esS+d7piv7uj/3h+s/ecnN
+# v370d6ZJ1CCi9YWxDlK/Q2miT1KY3w/eYURbIGc1olbIExGihyFvQCKLbulEpiiIEv08QfQb8EfwF3AH/AO8ByItRDFggDToBFtA
+# P7DADnAQPA2+CN4EvwfvgQGDaAKcBBw8D74MvgN+DH4B7gCGeewAz4DPgy+AV8Cr4OvgdfA9cAO8Df4O3gV3gZ4kagN9YCcYB0fA
+# E2AOzINzoAwuABesgxfBVfAt8H3wA3AL/BLcBn8C74JUG9YLZsEJcBqcBedBFfjgRXAVXAPXwRvgLfAz8CvwW3AH/BP8B8AFFAdw
+# GcGV1A6EIztBF+im0Hc9oBf0KZ9uBQPgIbANDAILbAcZCv27EzwKHgO6io16IhyPqXRC6QGUFqU/D91Q+ktNumgrwqRVtU2peW/k
+# myo/qXTRZ0qtqd6kX1V6h9IfVmsUvx1KF20/ovSvQP+o0l9ryhd9PqL0m035os8hpb8FvU3Z7paIYawkq+zxlAx5RiNSdtBeJfcp
+# Oa7khJKTUvZQQfqH0VElj5HYR1E6pORhJael7KYZKRk9IWU7fVzKDjpJ4XwOSJmiT0jZRfNyfqbcmzos/LQct036QEhNyiSNSZmg
+# OSlTdEJKnc5KHyXpIIm1t9Bp6asIfUzJJ6Xfwn7SFKP90i+dMt0Ob++SslXJBC1IX8VpSvksL2WUHpeyi45LO2hyHd1q3t1q3rry
+# ebfyb1T4AkHzw9Rmul3F0UZ6CImfovzfICb/yFNxuxYTER5nz3QxGUM6RhO2HUW58JNrZWg3OWYc6zSoi927d4/eNM8zDacg6/2R
+# eSaH/Y81TSDqFixGHe17zCSdR92Lptg/BjlWAm2HkpOwwHlY7/58BwddJ0buiFyIJKQ1iXIYn8EbaTxjmM1BzOWbYj++Ay+zSdRJ
+# s8GURp6po4VBA1o3eYcitM1KYt/2YS4v03ZtUtOxYz9LJchJ7VHq10Yxdgr9JbUa8vq13U3pKNK5pnQE6T1N6TjSp5rSMYzAOvdu
+# P0nHdGKO2QPLJaMDsW7azbHaw56lIS6NqIfFQsY82AYyPhUdo30LqJHLJHQqteiwwAB2QLJlsMWgkhFFehsiyzBKrRGpP0lGaykZ
+# h/4QFclIltpiss0cJdsG27rgQQP296wo+veeitEr/HYkwm4zxobeYKNDWjqSZiR9Pg17ilgtSC+/xuhrTNpb+HseNj4oz8IjlGHt
+# 1LB6kdvsr4tmpzyLHKsfJeLMDLVmX99fxzG34plEPLbBbxdYQvbcr83K3rejVt99tUScD0nfPybnJNKfUmfhACLesTqwG5Ksw3Ss
+# QZS3bxy66sfUGcrkH3GZCPdLw9wiSzb6rKrzspPu0UVL7DCDdUDrkloVsZ2iiag6kqewLw78q8ja09fOYf6UWh7581k2nK5dY+0m
+# eyS9HwdYim1NY1YjNCg2UZsIZ0bDcg5pNS9G4bfBxtw23gGmkhG1Vw1V3qX2elq1YOqdFVF9tFLUcleDA5TYX67XnFpwkGL7Q8mm
+# SZsuUtuMW+Ezrsd3XbDXbEqI5HzDdogVSCsUKFIoCKVIrEhaETFRLBSEVqTeou1UPLdWyQZ8PciKRo5dqvP8/5acwuOEXXOCPI0W
+# y+5KdrHmcT+wvYB72TLGW6pVl+ogyG5MZsfGNPI09CGb5ClTrNj1tdpyFhNxAzuouU72qFOuu37Nqc7Ubd/P07YH1Ck4DvdU+fYH
+# lM/xlZKqwFGl/wFVTi157iVfrFxYMVu3nWp2Zsn25vnFVe6UMbn25pJwrO6mrKPrZd4QXeWpsym74AS8yr08mU2Zc3awlKeOppzj
+# pQu8HNyfNx94WHae+j6QN71aq1dEp81FHl+so4/ssRqvV4QdXK8K99V51bNXsqu17OGymN607WGxfAUrGv9AlRl3peE63Al86fP5
+# 4HJdOnHH+6mTq9Kj/6fh6ZNF0WTOddw8sQXSFhB+C0WKLSDwEK9RIUXWWWJnqfPcA6yw89yHHqDVLpe57x+r21Wfona9sWRTzG40
+# uFOheKk649Zdj4zyqueh7VFkppQ+h1Z2lVNSpedFbFKrSp263ODEFklfFG30xTm/SrHFsI6QsARFF2WtSJUHFMdj+nLAKQFFRkeo
+# yeFNaEd4uW57vCK9QzHkIDLIgBRrEYMklR4uZSMVDplQKZ8iNecAbVnml58tL9nBsyvhKoo1Z7ngUM+D8o+vYsp17lSDJcrhCFm2
+# ymJWvrXqwPC1utjxw5YfuOVlS+z2sNhaRjRPWWgpulimyIq9jkfNId2xV7D4hueWOBkeX3HXwvOmzefBYemNGrqkhEhKfwgttETc
+# D9dBJpTTDmIY3XMRXBT1pVFbA3eWr4dhTonAVZoeCFOnVxsVO+BHPPsS7AJrR9fs+ion/ZJnN+g6e+GFIxPPZUp2eRnuz0xlKnw9
+# M5zB6dPAMkXwj6zgrEGBh8iyfY7CJdsfKS/x8rK/uuJnphbtus+HM1jniN2oZaZ2jw9n/CV7ZBSN7HG7Mjphj+fG9uVK45OTldzY
+# xG4+NjleHs1N2uN7S4vji5OjFdHrGvd8DIdGE7tGc7smRyp8LfNp0mLsTG9Ui2vDel+xJ6a1sDMDrDepJaTE9wV+pvGZK/oVo5V9
+# 24iLr6JZlnj/P5t8+Yr+6zRDjb+mWeJGmrV8KcVa7kLebI3ruW3i97h8/3wVL75vpMJ3zneVvAl5N3X/u9RMb75TN+4miXT4bdmc
+# L+TG3Vhruh9HaPOOrNPmPTlKm3flGG3el5kV3p1EhYgVfpuKb1Rmhu9KcTfRrHAscafWrbBfsR5xURP9iG/gqBXOSXzrRsxwHmJt
+# MVWnV10MmbrX/xc9jME9
 # __DEX_END__
